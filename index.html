@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgeWell - Smart Elderly Care & Emergency Detection Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS for Live Interactive GPS Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js for Admin & Health Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            800: '#1e3a8a',
+                            900: '#0A192F',
+                        },
+                        teal: {
+                            500: '#14b8a6',
+                            600: '#0D9488',
+                            700: '#0f766e',
+                        },
+                        crimson: {
+                            500: '#ef4444',
+                            600: '#DC2626',
+                            700: '#b91c1c',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+            transition: font-size 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.large-text-mode {
+            font-size: 1.15rem;
+        }
+
+        body.high-contrast {
+            background-color: #000000 !important;
+            color: #FFFF00 !important;
+        }
+        body.high-contrast .bg-white, 
+        body.high-contrast .bg-slate-50, 
+        body.high-contrast .bg-slate-100 {
+            background-color: #111111 !important;
+            color: #FFFFFF !important;
+            border-color: #FFFF00 !important;
+        }
+        body.high-contrast button {
+            border: 2px solid #FFFF00 !important;
+        }
+
+        .pulse-alarm {
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(0.98);
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            }
+            70% {
+                transform: scale(1.03);
+                box-shadow: 0 0 0 20px rgba(220, 38, 38, 0);
+            }
+            100% {
+                transform: scale(0.98);
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+            }
+        }
+
+        .sos-button-glow {
+            box-shadow: 0 0 35px rgba(220, 38, 38, 0.5);
+        }
+
+        .page-view {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .page-view.active {
+            display: block;
+            opacity: 1;
+        }
+
+        button:focus, a:focus, input:focus, select:focus {
+            outline: 3px solid #0D9488;
+            outline-offset: 2px;
+        }
+
+        .ecg-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: ecg-draw 2s linear infinite;
+        }
+
+        @keyframes ecg-draw {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* Scroll Reveal Animation Styles */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(35px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .reveal-on-scroll.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-slate-800 bg-slate-50 flex flex-col min-h-screen">
+
+    <!-- TOP GLOBAL ACCESSIBILITY & SIMULATION TOOLBAR -->
+    <div class="bg-navy-900 text-teal-300 text-xs sm:text-sm px-4 py-2 flex flex-wrap justify-between items-center gap-2 border-b border-slate-800">
+        <span class="truncate"><i class="fa-solid fa-shield-halved mr-2 text-teal-400"></i> <strong>AgeWell Enterprise Platform:</strong> Active Monitoring & AI Safety System</span>
+        
+        <div class="flex items-center space-x-3 text-xs">
+            <button onclick="toggleLargeText()" class="hover:text-white flex items-center bg-navy-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-font mr-1"></i> <span data-i18n="largeTextBtn">Large Text</span>
+            </button>
+            <button onclick="toggleHighContrast()" class="hover:text-white flex items-center bg-navy-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-eye mr-1"></i> <span data-i18n="highContrastBtn">High Contrast</span>
+            </button>
+            <button onclick="speakCurrentStatus()" class="hover:text-white flex items-center bg-teal-600 text-white px-2.5 py-1 rounded-lg font-bold">
+                <i class="fa-solid fa-volume-high mr-1"></i> <span data-i18n="voiceReadoutBtn">Voice Assist</span>
+            </button>
+            <span class="hidden md:inline text-slate-400 border-l border-slate-700 pl-3">Active Profile: <strong id="currentUserTag" class="text-white">Elderly (Robert)</strong></span>
+        </div>
+    </div>
+
+    <!-- MAIN HEADER NAVIGATION -->
+    <header class="bg-white shadow-md sticky top-0 z-40 dark:bg-slate-900 dark:border-b dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                
+                <div class="flex items-center cursor-pointer" onclick="navigateTo('home')">
+                    <div class="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-md mr-3">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <div>
+                        <span class="text-2xl font-extrabold text-navy-900 tracking-tight">Age<span class="text-teal-600">Well</span></span>
+                        <p class="text-xs text-slate-500 font-medium hidden sm:block" data-i18n="tagline">Caring Beyond Distance, Protecting Every Moment</p>
+                    </div>
+                </div>
+
+                <nav class="hidden md:flex space-x-1 lg:space-x-3 items-center">
+                    <button onclick="navigateTo('home')" class="nav-btn px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition" data-i18n="navHome">Home</button>
+                    <button onclick="navigateTo('elderly')" class="nav-btn px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition" data-i18n="navElderly">Senior Portal</button>
+                    <button onclick="navigateTo('caregiver')" class="nav-btn px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition" data-i18n="navCaregiver">Caregiver Hub</button>
+                    <button onclick="navigateTo('admin')" class="nav-btn px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition" data-i18n="navAdmin">Admin Analytics</button>
+                </nav>
+
+                <div class="flex items-center space-x-3">
+                    <div class="relative inline-block text-left">
+                        <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-slate-100 border border-slate-300 text-slate-700 py-2 px-3 pr-8 rounded-lg text-sm font-medium focus:ring-teal-500 focus:border-teal-500 cursor-pointer">
+                            <option value="en">🌐 English</option>
+                            <option value="hi">🌐 हिन्दी (Hindi)</option>
+                            <option value="mr">🌐 मराठी (Marathi)</option>
+                        </select>
+                    </div>
+
+                    <div id="authNavButtons" class="hidden sm:flex space-x-2">
+                        <button onclick="navigateTo('login')" class="px-4 py-2 border border-teal-600 text-teal-600 rounded-lg text-sm font-semibold hover:bg-teal-50 transition" data-i18n="btnLogin">Log In</button>
+                    </div>
+
+                    <button id="logoutBtn" onclick="logoutUser()" class="hidden px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> <span data-i18n="btnLogout">Logout</span>
+                    </button>
+
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-slate-600 hover:text-navy-900 focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobileMenu" class="hidden md:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-4 space-y-2">
+            <button onclick="navigateTo('home'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100" data-i18n="navHome">Home</button>
+            <button onclick="navigateTo('elderly'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100" data-i18n="navElderly">Senior Portal</button>
+            <button onclick="navigateTo('caregiver'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100" data-i18n="navCaregiver">Caregiver Hub</button>
+            <button onclick="navigateTo('admin'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100" data-i18n="navAdmin">Admin Analytics</button>
+        </div>
+    </header>
+
+    <main class="flex-grow">
+        <!-- ================= PAGE 1: HOMEPAGE ================= -->
+        <section id="page-home" class="page-view active">
+            <!-- HERO SECTION -->
+            <div class="bg-gradient-to-br from-navy-900 via-navy-800 to-teal-950 text-white py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+                <div class="absolute -top-32 -left-32 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+                    <div class="space-y-6 reveal-on-scroll">
+                        <span class="inline-flex items-center space-x-2 px-4 py-2 bg-teal-500/15 text-teal-300 font-bold text-xs rounded-full border border-teal-500/30 shadow-inner">
+                            <span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+                            <span>🛡️ Next-Gen AI Elderly Care & Emergency Detection</span>
+                        </span>
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight" data-i18n="heroHeading">
+                            Your Loved Ones Deserve Care, <span class="gradient-text">Even When You’re Away.</span>
+                        </h1>
+                        <p class="text-slate-300 text-base sm:text-lg max-w-xl leading-relaxed" data-i18n="heroTagline">
+                            Protecting seniors with instant SOS emergency dispatch, simulated fall & inactivity sensors, live GPS geofencing, AI report analysis, and multi-tier caregiver escalation.
+                        </p>
+                        <div class="flex flex-wrap gap-4 pt-4">
+                            <button onclick="startSOSCountdown()" class="px-8 py-4 bg-crimson-600 text-white font-extrabold rounded-2xl shadow-xl hover:bg-crimson-700 transform hover:scale-105 transition duration-200 text-lg flex items-center sos-button-glow">
+                                <i class="fa-solid fa-triangle-exclamation mr-3 text-xl"></i> <span data-i18n="heroSosBtn">Trigger SOS Emergency</span>
+                            </button>
+                            <button onclick="navigateTo('elderly')" class="px-6 py-4 bg-white/10 backdrop-blur-md text-white font-bold rounded-2xl border border-white/20 hover:bg-white/20 transition text-base flex items-center" data-i18n="heroAccessBtn">
+                                Launch Senior Portal <i class="fa-solid fa-arrow-right ml-2 text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- REAL-TIME LIVE VITALS WIDGET -->
+                    <div class="flex justify-center reveal-on-scroll">
+                        <div class="relative bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl max-w-md w-full space-y-6">
+                            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-14 h-14 bg-teal-600 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg">👴</div>
+                                    <div>
+                                        <h3 class="font-bold text-white text-lg" data-i18n="seniorName">Grandpa Robert</h3>
+                                        <p class="text-xs text-teal-300" data-i18n="monitoredSafe">Status: Monitored & Safe</p>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full border border-emerald-500/40" data-i18n="onlineBadge">ONLINE</span>
+                            </div>
+
+                            <!-- Live Animated ECG Signal -->
+                            <div class="bg-navy-950/70 p-4 rounded-2xl border border-teal-500/30">
+                                <div class="flex justify-between items-center mb-1 text-xs">
+                                    <span class="text-slate-400 font-bold"><i class="fa-solid fa-heart-pulse text-red-500 mr-1 animate-pulse"></i> <span data-i18n="livePulseWave">Live Pulse Wave</span></span>
+                                    <span class="text-teal-400 font-black text-sm" id="liveBpmDisplay">72 BPM</span>
+                                </div>
+                                <svg class="w-full h-12" viewBox="0 0 500 100">
+                                    <path class="ecg-line" d="M 0 50 Q 50 50 70 50 L 90 20 L 110 80 L 130 10 L 150 90 L 170 50 L 250 50 Q 300 50 320 50 L 340 20 L 360 80 L 380 10 L 400 90 L 420 50 L 500 50" fill="none" stroke="#14b8a6" stroke-width="4" />
+                                </svg>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div class="bg-navy-900/80 p-3 rounded-xl border border-white/5">
+                                    <span class="text-slate-400" data-i18n="bloodPressure">Blood Pressure</span>
+                                    <p class="text-white font-bold text-base mt-0.5">120/80 mmHg</p>
+                                </div>
+                                <div class="bg-navy-900/80 p-3 rounded-xl border border-white/5">
+                                    <span class="text-slate-400" data-i18n="oxygenSat">Oxygen Saturation</span>
+                                    <p class="text-emerald-400 font-bold text-base mt-0.5">98% SpO2</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KEY STATS COUNTER BAR -->
+            <div class="max-w-7xl mx-auto -mt-12 px-4 relative z-20 reveal-on-scroll">
+                <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                    <div class="space-y-1">
+                        <div class="text-3xl font-extrabold text-navy-900">24/7</div>
+                        <p class="text-xs text-slate-500 font-medium">Continuous Active Monitoring</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-3xl font-extrabold text-teal-600">&lt; 5s</div>
+                        <p class="text-xs text-slate-500 font-medium">SOS Escalation Time</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-3xl font-extrabold text-indigo-600">99.8%</div>
+                        <p class="text-xs text-slate-500 font-medium">AI Scanner Accuracy</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-3xl font-extrabold text-emerald-600">3-Tier</div>
+                        <p class="text-xs text-slate-500 font-medium">Emergency Fail-Safe Escalation</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURES SECTION -->
+            <div class="py-20 px-4 max-w-7xl mx-auto space-y-16">
+                <div class="text-center max-w-3xl mx-auto space-y-3 reveal-on-scroll">
+                    <span class="text-teal-600 font-bold text-xs uppercase tracking-wider bg-teal-50 px-3 py-1.5 rounded-full border border-teal-200">Core Capabilities</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-navy-900">Designed Specifically for Senior Safety & Caregiver Peace of Mind</h2>
+                    <p class="text-slate-500 text-sm">AgeWell connects intelligent software, simulated health sensors, and human care to create a complete safety ring around your family.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Feature Card 1 -->
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-on-scroll">
+                        <div class="w-14 h-14 bg-red-100 text-crimson-600 rounded-2xl flex items-center justify-center text-2xl font-bold mb-6">
+                            <i class="fa-solid fa-bell-concierge"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-navy-900 mb-3">One-Touch SOS Emergency</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                            Seniors can dispatch multi-channel alert signals to family, primary caregivers, and ambulance dispatch with a single large button.
+                        </p>
+                        <span class="text-teal-600 font-bold text-xs flex items-center">Includes 5s False Alarm Cancel <i class="fa-solid fa-chevron-right ml-1"></i></span>
+                    </div>
+
+                    <!-- Feature Card 2 -->
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-on-scroll">
+                        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl font-bold mb-6">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-navy-900 mb-3">Live Geofencing & GPS</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                            Caregivers receive immediate notifications if seniors step outside defined safe zone perimeters, complete with interactive maps.
+                        </p>
+                        <span class="text-teal-600 font-bold text-xs flex items-center">Interactive Map Tracking <i class="fa-solid fa-chevron-right ml-1"></i></span>
+                    </div>
+
+                    <!-- Feature Card 3 -->
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-on-scroll">
+                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-bold mb-6">
+                            <i class="fa-solid fa-camera-rotate"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-navy-900 mb-3">AI Report & Medication Scanner</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                            Scan pill boxes, prescriptions, or medical test reports using your device camera to automatically extract dosages and schedules.
+                        </p>
+                        <span class="text-teal-600 font-bold text-xs flex items-center">Gemini AI Vision Powered <i class="fa-solid fa-chevron-right ml-1"></i></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOW IT WORKS FLOWCHART SECTION -->
+            <div class="bg-slate-100 py-20 px-4 border-y border-slate-200">
+                <div class="max-w-7xl mx-auto space-y-12">
+                    <div class="text-center max-w-2xl mx-auto space-y-3 reveal-on-scroll">
+                        <span class="text-indigo-600 font-bold text-xs uppercase tracking-wider bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-200">Simple Workflow</span>
+                        <h2 class="text-3xl font-extrabold text-navy-900">How AgeWell Escalation Works</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-3 relative reveal-on-scroll">
+                            <div class="w-10 h-10 bg-slate-900 text-white font-black rounded-full flex items-center justify-center mx-auto text-sm">1</div>
+                            <h4 class="font-bold text-navy-900 text-base">Signal Triggered</h4>
+                            <p class="text-xs text-slate-500">SOS Button press, Fall detector, or Inactivity sensor alert activated.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-3 relative reveal-on-scroll">
+                            <div class="w-10 h-10 bg-teal-600 text-white font-black rounded-full flex items-center justify-center mx-auto text-sm">2</div>
+                            <h4 class="font-bold text-navy-900 text-base">Caregiver Alerted</h4>
+                            <p class="text-xs text-slate-500">Primary contact receives instant sound alarm & map pin location.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-3 relative reveal-on-scroll">
+                            <div class="w-10 h-10 bg-indigo-600 text-white font-black rounded-full flex items-center justify-center mx-auto text-sm">3</div>
+                            <h4 class="font-bold text-navy-900 text-base">Video Verification</h4>
+                            <p class="text-xs text-slate-500">Caregiver launches 1-click encrypted camera call to verify status.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-3 relative reveal-on-scroll">
+                            <div class="w-10 h-10 bg-red-600 text-white font-black rounded-full flex items-center justify-center mx-auto text-sm">4</div>
+                            <h4 class="font-bold text-navy-900 text-base">Ambulance Escalation</h4>
+                            <p class="text-xs text-slate-500">If unacknowledged, system escalates to Level 3 Emergency Ambulance dispatch.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 2: AUTHENTICATION ================= -->
+        <section id="page-login" class="page-view py-12 px-4">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="signInTitle">Sign In to AgeWell Platform</h2>
+                    <p class="text-slate-500 text-sm mt-1" data-i18n="signInSub">Select your role to switch dashboard access</p>
+                </div>
+                <div class="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl mb-6">
+                    <button type="button" onclick="selectRole('elderly')" id="role-btn-elderly" class="role-btn py-2 text-xs sm:text-sm font-bold rounded-lg bg-white shadow-sm text-teal-700" data-i18n="roleSenior">Senior</button>
+                    <button type="button" onclick="selectRole('caregiver')" id="role-btn-caregiver" class="role-btn py-2 text-xs sm:text-sm font-bold rounded-lg text-slate-600" data-i18n="roleCaregiver">Caregiver</button>
+                    <button type="button" onclick="selectRole('admin')" id="role-btn-admin" class="role-btn py-2 text-xs sm:text-sm font-bold rounded-lg text-slate-600" data-i18n="roleAdmin">Admin</button>
+                </div>
+                <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1" data-i18n="emailLabel">Email / Username</label>
+                        <input type="text" id="authEmail" required value="robert@agewell.org" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1" data-i18n="passLabel">Password</label>
+                        <input type="password" id="authPass" required value="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <button type="submit" class="w-full py-3.5 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow transition text-base">
+                        <span data-i18n="signInBtnPrefix">Sign In as</span> <span id="selectedRoleLabel">Senior</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: ELDERLY DASHBOARD ================= -->
+        <section id="page-elderly" class="page-view py-8 px-4 max-w-7xl mx-auto">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-navy-900" data-i18n="elderlyWelcome">Welcome Back, Grandpa Robert! 👋</h1>
+                    <p class="text-slate-500 text-sm mt-1" data-i18n="elderlySub">Smart sensors and caregiver networks are actively connected.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button onclick="openAiChatModal()" class="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-2xl text-xs hover:bg-indigo-700 shadow transition flex items-center">
+                        <i class="fa-solid fa-robot mr-2 text-sm"></i> <span data-i18n="aiAssistantBtn">AgeWell AI Assistant</span>
+                    </button>
+                    <button onclick="startVideoCall('Sarah Jenkins (Caregiver)')" class="px-4 py-2.5 bg-teal-600 text-white font-bold rounded-2xl text-xs hover:bg-teal-700 shadow transition flex items-center">
+                        <i class="fa-solid fa-video mr-2 text-sm"></i> <span data-i18n="callCaregiverBtn">Call Caregiver</span>
+                    </button>
+                    <div class="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-2xl">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </span>
+                        <span class="text-emerald-800 font-bold text-xs" id="elderlyStatusBadge" data-i18n="systemSafeBadge">SYSTEM SAFE</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- BIG SOS BUTTON CARD -->
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 p-8 rounded-3xl border-2 border-red-200 text-center shadow-md">
+                        <h2 class="text-2xl font-extrabold text-red-900 mb-2" data-i18n="sosCardTitle">Need Immediate Emergency Assistance?</h2>
+                        <p class="text-sm text-red-700 mb-6 max-w-md mx-auto" data-i18n="sosCardSub">Pressing the button below activates immediate emergency escalation across primary caregivers and medical services.</p>
+                        <button onclick="startSOSCountdown()" class="w-48 h-48 bg-crimson-600 hover:bg-crimson-700 text-white font-black text-3xl rounded-full shadow-2xl pulse-alarm mx-auto flex flex-col items-center justify-center border-4 border-white transform active:scale-95 transition">
+                            <i class="fa-solid fa-bell text-4xl mb-2"></i>
+                            <span data-i18n="pressSosBtn">PRESS SOS</span>
+                        </button>
+                    </div>
+
+                    <!-- MEDICATION SCHEDULE CARD WITH AI SCANNER -->
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+                            <h3 class="text-lg font-bold text-navy-900 flex items-center">
+                                <i class="fa-solid fa-pills text-teal-600 mr-2.5"></i> <span data-i18n="medicationTitle">Today's Medication Schedule</span>
+                            </h3>
+                            <button onclick="openPrescriptionScannerModal()" class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 hover:bg-indigo-100 transition flex items-center">
+                                <i class="fa-solid fa-camera mr-1.5"></i> <span data-i18n="scanReportBtn">Scan Report/Prescription</span>
+                            </button>
+                        </div>
+                        <div class="space-y-3" id="medicationList">
+                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-teal-100 text-teal-700 rounded-xl flex items-center justify-center font-bold">💊</div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm">Aspirin (75mg)</h4>
+                                        <p class="text-xs text-slate-500" data-i18n="aspirinTime">Morning • Post Breakfast (08:30 AM)</p>
+                                    </div>
+                                </div>
+                                <button onclick="toggleMedication(this)" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-emerald-700 transition" data-i18n="takenBtn">
+                                    Taken
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-navy-900 mb-4" data-i18n="sensorsTitle">Simulated Safety Sensors</h3>
+                        <div class="space-y-3">
+                            <button onclick="simulateSensorAlert('Sudden Fall Detected')" class="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-person-falling mr-2 text-sm"></i> <span data-i18n="triggerFallBtn">Trigger Fall Simulation</span>
+                            </button>
+                            <button onclick="simulateSensorAlert('Prolonged Inactivity (2 hrs)')" class="w-full py-3.5 px-4 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-bed mr-2 text-sm"></i> <span data-i18n="triggerInactivityBtn">Trigger Inactivity Simulation</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-navy-900 mb-4" data-i18n="caregiverCardTitle">Connected Caregiver</h3>
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-lg">👩‍⚕️</div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm">Sarah Jenkins</h4>
+                            <p class="text-xs text-slate-500" data-i18n="caregiverRole">Daughter • Primary Contact</p>
+                            <p class="text-xs text-teal-600 font-semibold mt-1">📞 +1 (555) 019-2831</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 4: CAREGIVER DASHBOARD ================= -->
+        <section id="page-caregiver" class="page-view py-8 px-4 max-w-7xl mx-auto">
+            <div id="caregiverAlertBanner" class="hidden mb-6 p-6 bg-crimson-600 text-white rounded-3xl shadow-xl flex justify-between items-center pulse-alarm">
+                <div class="flex items-center space-x-4">
+                    <i class="fa-solid fa-triangle-exclamation text-4xl"></i>
+                    <div>
+                        <h3 class="text-xl font-extrabold" id="activeAlertTitle" data-i18n="emergencyAlertBannerTitle">EMERGENCY ALERT</h3>
+                        <p class="text-sm text-red-100" id="activeAlertDesc" data-i18n="emergencyAlertBannerDesc">Grandpa Robert pressed SOS button!</p>
+                    </div>
+                </div>
+                <button onclick="acknowledgeAlert()" class="px-6 py-3 bg-white text-crimson-700 font-extrabold rounded-2xl hover:bg-red-50 transition shadow" data-i18n="acknowledgeBtn">
+                    Acknowledge & Respond
+                </button>
+            </div>
+
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-navy-900" data-i18n="caregiverHubTitle">Caregiver Monitoring Hub</h1>
+                    <p class="text-slate-500 text-sm mt-1" data-i18n="caregiverHubSub">Real-time status, geofencing, and emergency alert history</p>
+                </div>
+            </div>
+
+            <!-- DETAILED PATIENT PROFILE & VITALS BAR -->
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-teal-600 text-white rounded-2xl flex items-center justify-center font-bold text-3xl shadow-md">👴</div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h2 class="text-xl font-extrabold text-navy-900">Grandpa Robert Johnson</h2>
+                                <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-full">Age 78</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5"><i class="fa-solid fa-location-dot text-teal-600 mr-1"></i> Apt 4B, Sunflower Residency, Pune • <strong>ID:</strong> AGW-8942</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="startVideoCall('Grandpa Robert')" class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition flex items-center shadow-sm">
+                            <i class="fa-solid fa-video mr-1.5"></i> Video Call
+                        </button>
+                        <button onclick="alert('Calling Grandpa Robert (+1 555-019-2831)...')" class="px-4 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition flex items-center shadow-sm">
+                            <i class="fa-solid fa-phone mr-1.5"></i> Voice Call
+                        </button>
+                    </div>
+                </div>
+
+                <!-- LIVE PATIENT VITALS GRID -->
+                <div>
+                    <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-3">Live Health Vitals</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <span class="text-slate-500 font-semibold block mb-1"><i class="fa-solid fa-heart-pulse text-red-500 mr-1"></i> Heart Rate</span>
+                            <span class="text-xl font-black text-navy-900" id="caregiverBpmDisplay">72 BPM</span>
+                            <span class="text-[10px] text-emerald-600 font-bold block mt-1">✓ Normal Rhythm</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <span class="text-slate-500 font-semibold block mb-1"><i class="fa-solid fa-stethoscope text-blue-500 mr-1"></i> Blood Pressure</span>
+                            <span class="text-xl font-black text-navy-900">120/80 mmHg</span>
+                            <span class="text-[10px] text-emerald-600 font-bold block mt-1">✓ Optimal Range</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <span class="text-slate-500 font-semibold block mb-1"><i class="fa-solid fa-lungs text-indigo-500 mr-1"></i> Oxygen (SpO2)</span>
+                            <span class="text-xl font-black text-navy-900">98%</span>
+                            <span class="text-[10px] text-emerald-600 font-bold block mt-1">✓ Excellent</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <span class="text-slate-500 font-semibold block mb-1"><i class="fa-solid fa-temperature-three-quarters text-amber-500 mr-1"></i> Body Temp</span>
+                            <span class="text-xl font-black text-navy-900">98.4 °F</span>
+                            <span class="text-[10px] text-emerald-600 font-bold block mt-1">✓ Normal</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MEDICAL CONDITIONS & EMERGENCY SUMMARY -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+                    <div class="p-4 bg-teal-50/60 rounded-2xl border border-teal-100 space-y-1.5">
+                        <span class="font-bold text-teal-900 text-sm block mb-1"><i class="fa-solid fa-notes-medical mr-1.5"></i> Medical Profile & Allergies</span>
+                        <p class="text-slate-700"><strong>Blood Group:</strong> O Positive (O+)</p>
+                        <p class="text-slate-700"><strong>Chronic Conditions:</strong> Hypertension (Mild), Mild Osteoarthritis</p>
+                        <p class="text-slate-700"><strong>Allergies:</strong> Penicillin (Severe)</p>
+                    </div>
+                    <div class="p-4 bg-indigo-50/60 rounded-2xl border border-indigo-100 space-y-1.5">
+                        <span class="font-bold text-indigo-900 text-sm block mb-1"><i class="fa-solid fa-user-doctor mr-1.5"></i> Primary Physician Contact</span>
+                        <p class="text-slate-700"><strong>Doctor:</strong> Dr. Arvind Sharma (Cardiologist)</p>
+                        <p class="text-slate-700"><strong>Clinic:</strong> City Care Hospital, OPD #204</p>
+                        <p class="text-slate-700"><strong>Phone:</strong> +91 98220 11223</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div class="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-navy-900 text-lg flex items-center">
+                            <i class="fa-solid fa-map-location-dot text-teal-600 mr-2"></i> <span data-i18n="liveGpsMapTitle">Live Senior GPS Location & Safe Zone</span>
+                        </h3>
+                        <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full" data-i18n="geofenceActiveBadge">Geofence Active</span>
+                    </div>
+                    <div id="caregiverMap" class="w-full h-72 rounded-2xl border border-slate-200 z-10"></div>
+                </div>
+
+                <!-- PATIENT MEDICATION TRACKER & CAREGIVER SCHEDULER IN CAREGIVER HUB -->
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-navy-900 text-lg flex items-center">
+                            <i class="fa-solid fa-clock-rotate-left text-teal-600 mr-2"></i> Manage Senior Schedule
+                        </h3>
+                        <button onclick="openAddScheduleModal()" class="px-3 py-1.5 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition flex items-center">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Routine
+                        </button>
+                    </div>
+                    <div class="space-y-3 text-xs" id="caregiverMedScheduleList">
+                        <!-- Dynamic Sync Medication Items -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-bold text-navy-900 mb-4" data-i18n="activityLogTitle">Activity & Safety History Log</h3>
+                <div class="space-y-3 text-xs" id="caregiverEventLog">
+                    <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
+                        <span><strong class="text-emerald-600">[System]</strong> <span data-i18n="systemNormalLog">Routine health monitoring signal normal.</span></span>
+                        <span class="text-slate-400" data-i18n="justNow">Just now</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 5: ADMIN DASHBOARD ================= -->
+        <section id="page-admin" class="page-view py-8 px-4 max-w-7xl mx-auto">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-navy-900 mb-6" data-i18n="adminAnalyticsTitle">Admin Analytics Console</h1>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-bold text-slate-500 uppercase" data-i18n="statTotalUsers">Total Users</span>
+                    <div class="text-3xl font-black text-navy-900 mt-2">1,248</div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-bold text-slate-500 uppercase" data-i18n="statSeniors">Seniors</span>
+                    <div class="text-3xl font-black text-teal-600 mt-2">840</div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-bold text-slate-500 uppercase" data-i18n="statCaregivers">Caregivers</span>
+                    <div class="text-3xl font-black text-blue-600 mt-2">408</div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-bold text-slate-500 uppercase" data-i18n="statActiveAlerts">Active Alerts</span>
+                    <div class="text-3xl font-black text-crimson-600 mt-2">0</div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-bold text-navy-900 mb-4" data-i18n="weeklyChartTitle">Weekly Platform Incidents Chart</h3>
+                <canvas id="adminAnalyticsChart" class="w-full max-h-64"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-navy-900 text-slate-400 py-8 border-t border-slate-800 mt-auto text-center text-xs">
+        <p>&copy; 2026 AgeWell Smart Elderly Care Platform. All rights reserved.</p>
+    </footer>
+
+    <!-- MODAL 1: SOS COUNTDOWN CANCEL MODAL -->
+    <div id="sosCountdownModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-2 border-red-500">
+            <h3 class="text-xl font-extrabold text-red-600 mb-2">Emergency SOS Triggering!</h3>
+            <div class="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-black text-4xl mx-auto my-4 shadow-inner" id="sosTimerCount">5</div>
+            <p class="text-xs text-slate-600 mb-6">Press CANCEL if this was triggered accidentally.</p>
+            <button onclick="cancelSOSAlert()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900">
+                CANCEL FALSE ALARM
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VIDEO CALL OVERLAY -->
+    <div id="videoCallModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-lg z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-3xl max-w-3xl w-full h-[500px] relative overflow-hidden shadow-2xl flex flex-col justify-between border border-slate-800">
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-800">
+                <div class="text-center" id="videoCallPlaceholder">
+                    <div class="w-24 h-24 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-4xl mx-auto mb-4 border-4 border-slate-700">👤</div>
+                    <h3 class="text-2xl font-extrabold text-white" id="videoCallTargetName">Sarah Jenkins</h3>
+                    <p class="text-sm text-teal-400 mt-1 animate-pulse" id="videoCallStatusText">Connecting HD Encrypted Video Call...</p>
+                </div>
+            </div>
+
+            <div class="absolute top-4 right-4 w-36 h-48 bg-slate-950 rounded-2xl border-2 border-teal-500 shadow-2xl overflow-hidden z-10 flex items-center justify-center">
+                <video id="callSelfVideo" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+                <span id="callSelfVideoFallback" class="text-xs text-slate-400 font-bold px-2 text-center">You (Grandpa)</span>
+            </div>
+
+            <div class="relative z-10 p-6 flex justify-between items-center bg-gradient-to-b from-slate-950/80 to-transparent">
+                <span class="bg-teal-500/20 border border-teal-500/30 text-teal-300 text-xs px-3 py-1 rounded-full font-bold">Live Encrypted Stream</span>
+            </div>
+
+            <div class="relative z-10 p-6 flex justify-center items-center space-x-6 bg-gradient-to-t from-slate-950/90 to-transparent">
+                <button onclick="endVideoCall()" class="w-16 h-16 bg-crimson-600 text-white rounded-full flex items-center justify-center text-2xl hover:bg-crimson-700">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: PRESCRIPTION SCANNER -->
+    <div id="prescriptionScannerModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-extrabold text-navy-900 flex items-center">
+                    <i class="fa-solid fa-receipt text-teal-600 mr-2"></i> Scan Prescription or Report
+                </h3>
+                <button onclick="closePrescriptionScannerModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 shadow-inner flex flex-col items-center justify-center min-h-[220px]">
+                    <video id="scannerCameraVideo" autoplay playsinline class="w-full h-56 object-cover hidden"></video>
+                    <canvas id="scannerCaptureCanvas" class="hidden"></canvas>
+                    
+                    <div id="scannerPlaceholderUI" class="p-8 text-center cursor-pointer" onclick="startScannerCamera()">
+                        <i class="fa-solid fa-camera text-4xl text-teal-500 mb-3 animate-bounce"></i>
+                        <h4 class="font-bold text-white text-sm">Click to Turn On Camera Scanner</h4>
+                    </div>
+                    <img id="scannedImagePreview" class="hidden max-h-56 mx-auto rounded-xl shadow-md object-contain" alt="Preview">
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                    <button id="captureBtn" onclick="captureScannerPhoto()" class="hidden flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition flex items-center justify-center">
+                        <i class="fa-solid fa-circle-dot mr-2 text-red-400"></i> Capture & Analyze Photo
+                    </button>
+                </div>
+
+                <div id="scannerAnalysisLoading" class="hidden text-center py-4 space-y-2">
+                    <div class="inline-block animate-spin text-teal-600 text-2xl"><i class="fa-solid fa-spinner"></i></div>
+                    <p class="text-xs font-bold text-slate-700">Analyzing Document with AI...</p>
+                </div>
+
+                <div id="scannerResultBox" class="hidden p-4 bg-teal-50 rounded-2xl border border-teal-200 space-y-2 text-xs">
+                    <p><strong>Detected Medication:</strong> Metformin (500mg)</p>
+                    <p><strong>Frequency:</strong> Twice Daily • After Meals</p>
+                    <button onclick="addScannedMedicationToSchedule()" class="w-full py-2 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition">
+                        + Add Extracted Pill to Schedule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: AI ASSISTANT -->
+    <div id="aiChatModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full h-[550px] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+            <div class="bg-navy-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center"><i class="fa-solid fa-robot mr-2 text-teal-400"></i> AgeWell AI Assistant</h3>
+                <button onclick="closeAiChatModal()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="aiChatHistory" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+                <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    Hello Grandpa Robert! How are you feeling today? Ask me about your health, medications, or tips!
+                </div>
+            </div>
+            <form onsubmit="handleAiChatSubmit(event)" class="p-3 bg-white border-t border-slate-200 flex space-x-2">
+                <input type="text" id="aiChatInput" required placeholder="Ask your health question..." class="flex-grow px-4 py-2 rounded-xl border border-slate-300 text-xs">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: CAREGIVER SCHEDULE TIMING MODAL -->
+    <div id="addScheduleModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-extrabold text-navy-900 flex items-center">
+                    <i class="fa-solid fa-calendar-plus text-teal-600 mr-2"></i> Schedule Senior Routine / Pill
+                </h3>
+                <button onclick="closeAddScheduleModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleScheduleSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Medication / Activity Title</label>
+                    <input type="text" id="schedTitle" required placeholder="e.g. Calcium Supplement (500mg)" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Scheduled Time & Instructions</label>
+                    <input type="text" id="schedTime" required placeholder="e.g. 02:00 PM • Post Lunch" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button type="submit" class="w-full py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition">
+                    Sync to Senior Portal
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        let currentLanguage = 'en';
+        let sosTimerInterval = null;
+        let sosCountdown = 5;
+        let activeRole = 'elderly';
+        let callMediaStream = null;
+        let scannerMediaStream = null;
+        let mapInstance = null;
+
+        // SHARED STATE FOR REAL-TIME CAREGIVER & SENIOR SYNCHRONIZATION
+        let scheduleState = [
+            { id: 1, name: 'Aspirin (75mg)', time: 'Morning • Post Breakfast (08:30 AM)', taken: true },
+            { id: 2, name: 'Metformin (500mg)', time: 'Lunch • Post Meal (01:00 PM)', taken: false },
+            { id: 3, name: 'Atorvastatin (10mg)', time: 'Dinner • Post Meal (09:00 PM)', taken: false }
+        ];
+
+        // MULTILINGUAL TRANSLATION DICTIONARY
+        const translations = {
+            en: {
+                tagline: "Caring Beyond Distance, Protecting Every Moment",
+                largeTextBtn: "Large Text",
+                highContrastBtn: "High Contrast",
+                voiceReadoutBtn: "Voice Assist",
+                navHome: "Home",
+                navElderly: "Senior Portal",
+                navCaregiver: "Caregiver Hub",
+                navAdmin: "Admin Analytics",
+                btnLogin: "Log In",
+                btnLogout: "Logout",
+                heroHeading: "Your Loved Ones Deserve Care, Even When You’re Away.",
+                heroTagline: "Protecting seniors with instant SOS emergency dispatch, simulated fall & inactivity sensors, live GPS geofencing, AI report analysis, and multi-tier caregiver escalation.",
+                heroSosBtn: "Trigger SOS Emergency",
+                heroAccessBtn: "Launch Senior Portal",
+                seniorName: "Grandpa Robert",
+                monitoredSafe: "Status: Monitored & Safe",
+                onlineBadge: "ONLINE",
+                livePulseWave: "Live Pulse Wave",
+                bloodPressure: "Blood Pressure",
+                oxygenSat: "Oxygen Saturation",
+                signInTitle: "Sign In to AgeWell Platform",
+                signInSub: "Select your role to switch dashboard access",
+                roleSenior: "Senior",
+                roleCaregiver: "Caregiver",
+                roleAdmin: "Admin",
+                emailLabel: "Email / Username",
+                passLabel: "Password",
+                signInBtnPrefix: "Sign In as",
+                elderlyWelcome: "Welcome Back, Grandpa Robert! 👋",
+                elderlySub: "Smart sensors and caregiver networks are actively connected.",
+                aiAssistantBtn: "AgeWell AI Assistant",
+                callCaregiverBtn: "Call Caregiver",
+                systemSafeBadge: "SYSTEM SAFE",
+                sosCardTitle: "Need Immediate Emergency Assistance?",
+                sosCardSub: "Pressing the button below activates immediate emergency escalation across primary caregivers and medical services.",
+                pressSosBtn: "PRESS SOS",
+                medicationTitle: "Today's Medication Schedule",
+                scanReportBtn: "Scan Report/Prescription",
+                aspirinTime: "Morning • Post Breakfast (08:30 AM)",
+                takenBtn: "Taken",
+                sensorsTitle: "Simulated Safety Sensors",
+                triggerFallBtn: "Trigger Fall Simulation",
+                triggerInactivityBtn: "Trigger Inactivity Simulation",
+                caregiverCardTitle: "Connected Caregiver",
+                caregiverRole: "Daughter • Primary Contact",
+                emergencyAlertBannerTitle: "EMERGENCY ALERT",
+                emergencyAlertBannerDesc: "Grandpa Robert pressed SOS button!",
+                acknowledgeBtn: "Acknowledge & Respond",
+                caregiverHubTitle: "Caregiver Monitoring Hub",
+                caregiverHubSub: "Real-time status, geofencing, and emergency alert history",
+                liveGpsMapTitle: "Live Senior GPS Location & Safe Zone",
+                geofenceActiveBadge: "Geofence Active",
+                seniorOverviewTitle: "Senior Overview",
+                residenceAddress: "Residence: Apt 4B, Sunflower Residency",
+                launchVideoCallBtn: "Launch Video Call",
+                activityLogTitle: "Activity & Safety History Log",
+                systemNormalLog: "Routine health monitoring signal normal.",
+                justNow: "Just now",
+                adminAnalyticsTitle: "Admin Analytics Console",
+                statTotalUsers: "Total Users",
+                statSeniors: "Seniors",
+                statCaregivers: "Caregivers",
+                statActiveAlerts: "Active Alerts",
+                weeklyChartTitle: "Weekly Platform Incidents Chart"
+            },
+            hi: {
+                tagline: "दूरियों के पार देखभाल, हर पल सुरक्षा",
+                largeTextBtn: "बड़ा पाठ",
+                highContrastBtn: "उच्च कंट्रास्ट",
+                voiceReadoutBtn: "वॉयस असिस्टेंट",
+                navHome: "होम",
+                navElderly: "वरिष्ठ पोर्टल",
+                navCaregiver: "केयरगिवर हब",
+                navAdmin: "एडमिन विश्लेषण",
+                btnLogin: "लॉग इन",
+                btnLogout: "लॉग आउट",
+                heroHeading: "आपके अपनों को देखभाल मिलनी चाहिए, जब आप दूर हों तब भी।",
+                heroTagline: "तत्काल SOS आपातकालीन सेवा, फॉल और निष्क्रियता सेंसर, लाइव जीपीएस लोकेशन और AI मेडिकल सहायता के साथ बुजुर्गों की सुरक्षा।",
+                heroSosBtn: "SOS आपातकाल चालू करें",
+                heroAccessBtn: "वरिष्ठ पोर्टल खोलें",
+                seniorName: "दादाजी रॉबर्ट",
+                monitoredSafe: "स्थिति: सुरक्षित एवं निगरानी में",
+                onlineBadge: "ऑनलाइन",
+                livePulseWave: "लाइव पल्स तरंग",
+                bloodPressure: "रक्तचाप (BP)",
+                oxygenSat: "ऑक्सीजन का स्तर",
+                signInTitle: "AgeWell प्लेटफॉर्म में साइन इन करें",
+                signInSub: "डैशबोर्ड खोलने के लिए अपनी भूमिका चुनें",
+                roleSenior: "वरिष्ठ",
+                roleCaregiver: "केयरगिवर",
+                roleAdmin: "एडमिन",
+                emailLabel: "ईमेल / उपयोगकर्ता नाम",
+                passLabel: "पासवर्ड",
+                signInBtnPrefix: "लॉग इन करें -",
+                elderlyWelcome: "वापसी पर स्वागत है, दादाजी रॉबर्ट! 👋",
+                elderlySub: "स्मार्ट सेंसर और केयरगिवर नेटवर्क सक्रिय रूप से जुड़े हुए हैं।",
+                aiAssistantBtn: "AgeWell AI सहायक",
+                callCaregiverBtn: "केयरगिवर को कॉल करें",
+                systemSafeBadge: "प्रणाली सुरक्षित",
+                sosCardTitle: "क्या आपको तत्काल आपातकालीन सहायता की आवश्यकता है?",
+                sosCardSub: "नीचे दिया गया बटन दबाने पर मुख्य देखभालकर्ताओं और चिकित्सा सेवाओं को तुरंत सूचना भेजी जाती है।",
+                pressSosBtn: "SOS दबाएं",
+                medicationTitle: "आज की दवाइयों की सूची",
+                scanReportBtn: "रिपोर्ट / पर्ची स्कैन करें",
+                aspirinTime: "सुबह • नाश्ते के बाद (08:30 AM)",
+                takenBtn: "ले ली",
+                sensorsTitle: "सुरक्षा सेंसर सिमुलेशन",
+                triggerFallBtn: "गिरने (Fall) का सिमुलेशन करें",
+                triggerInactivityBtn: "निष्क्रियता का सिमुलेशन करें",
+                caregiverCardTitle: "जुड़े हुए केयरगिवर",
+                caregiverRole: "बेटी • मुख्य संपर्क",
+                emergencyAlertBannerTitle: "आपातकालीन चेतावनी",
+                emergencyAlertBannerDesc: "दादाजी रॉबर्ट ने SOS बटन दबाया है!",
+                acknowledgeBtn: "स्वीकार करें और जवाब दें",
+                caregiverHubTitle: "केयरगिवर मॉनिटरिंग हब",
+                caregiverHubSub: "लाइव स्थिति, जियोफेंसिंग और आपातकालीन रिकॉर्ड",
+                liveGpsMapTitle: "लाइव जीपीएस स्थान और सुरक्षित क्षेत्र",
+                geofenceActiveBadge: "जियोफेंस सक्रिय",
+                seniorOverviewTitle: "वरिष्ठ नागरिक विवरण",
+                residenceAddress: "निवास: फ्लैट 4B, सनफ्लावर रेजिडेंसी",
+                launchVideoCallBtn: "वीडियो कॉल शुरू करें",
+                activityLogTitle: "गतिविधि और सुरक्षा इतिहास लॉग",
+                systemNormalLog: "नियमित स्वास्थ्य निगरानी सिग्नल सामान्य है।",
+                justNow: "अभी",
+                adminAnalyticsTitle: "एडमिन एनालिटिक्स कंसोल",
+                statTotalUsers: "कुल उपयोगकर्ता",
+                statSeniors: "वरिष्ठ नागरिक",
+                statCaregivers: "केयरगिवर",
+                statActiveAlerts: "सक्रिय चेतावनियाँ",
+                weeklyChartTitle: "साप्ताहिक प्लेटफॉर्म घटनाएं चार्ट"
+            },
+            mr: {
+                tagline: "अंतरावर मात करणारी काळजी, प्रत्येक क्षणी सुरक्षा",
+                largeTextBtn: "मोठा मजकूर",
+                highContrastBtn: "हाय कॉन्ट्रास्ट",
+                voiceReadoutBtn: "व्हॉईस असिस्ट",
+                navHome: "मुख्य पान",
+                navElderly: "ज्येष्ठ नागरिक पोर्टल",
+                navCaregiver: "केअरगिव्हर हब",
+                navAdmin: "अ‍ॅडमिन अ‍नालिटिक्स",
+                btnLogin: "लॉग इन",
+                btnLogout: "लॉग आऊट",
+                heroHeading: "तुमच्या प्रियजनांना काळजी मिळायला हवी, तुम्ही दूर असतानाही.",
+                heroTagline: "तातडीची SOS आपत्कालीन यंत्रणा, फॉल व निष्क्रियता सेन्सर्स, लाईव्ह GPS आणि AI अहवाल विश्लेषणासह ज्येष्ठांची सुरक्षितता.",
+                heroSosBtn: "SOS आणीबाणी सुरू करा",
+                heroAccessBtn: "पोर्टल उघडा",
+                seniorName: "आजोबा रॉबर्ट",
+                monitoredSafe: "स्थिती: सुरक्षित व देखरेखीत",
+                onlineBadge: "ऑनलाइन",
+                livePulseWave: "लाइव्ह पल्स वेव्ह",
+                bloodPressure: "रक्तदाब (BP)",
+                oxygenSat: "ऑक्सिजन पातळी",
+                signInTitle: "AgeWell प्लॅटफॉर्मवर साइन इन करा",
+                signInSub: "डॅशबोर्डमध्ये जाण्यासाठी आपली भूमिका निवडा",
+                roleSenior: "ज्येष्ठ नागरिक",
+                roleCaregiver: "केअरगिव्हर",
+                roleAdmin: "अ‍ॅडमिन",
+                emailLabel: "ईमेल / युझरनेम",
+                passLabel: "पासवर्ड",
+                signInBtnPrefix: "लॉग इन करा -",
+                elderlyWelcome: "पुन्हा स्वागत आहे, आजोबा रॉबर्ट! 👋",
+                elderlySub: "स्मार्ट सेन्सर्स आणि केअरगिव्हर नेटवर्क सक्रियपणे जोडलेले आहेत.",
+                aiAssistantBtn: "AgeWell AI सहाय्यक",
+                callCaregiverBtn: "केअरगिव्हरला कॉल करा",
+                systemSafeBadge: "सिस्टम सुरक्षित",
+                sosCardTitle: "तुम्हाला तातडीच्या आपत्कालीन मदतीची गरज आहे का?",
+                sosCardSub: "खालील बटण दाबल्यास प्राथमिक काळजीवाहू आणि वैद्यकीय सेवांना त्वरित संदेश पाठवला जातो.",
+                pressSosBtn: "SOS दाबा",
+                medicationTitle: "आजचे औषधांचे वेळापत्रक",
+                scanReportBtn: "अहवाल / प्रिस्क्रिप्शन स्कॅन करा",
+                aspirinTime: "सकाळी • नाश्त्यानंतर (०८:३० AM)",
+                takenBtn: "घेतले",
+                sensorsTitle: "सुरक्षा सेन्सर सिम्युलेशन",
+                triggerFallBtn: "खाली पडल्याचे (Fall) सिम्युलेशन करा",
+                triggerInactivityBtn: "निष्क्रियतेचे सिम्युलेशन करा",
+                caregiverCardTitle: "जोडलेले केअरगिव्हर",
+                caregiverRole: "मुलगी • मुख्य संपर्क",
+                emergencyAlertBannerTitle: "आपत्कालीन इशारा",
+                emergencyAlertBannerDesc: "आजोबा रॉबर्ट यांनी SOS बटण दाबले आहे!",
+                acknowledgeBtn: "स्वीकारा आणि प्रतिसाद द्या",
+                caregiverHubTitle: "केअरगिव्हर मॉनिटरिंग हब",
+                caregiverHubSub: "रिअल-टाइम स्थिती, जिओफेन्सिंग आणि आपत्कालीन नोंदी",
+                liveGpsMapTitle: "लाइव्ह GPS स्थान आणि सुरक्षित क्षेत्र",
+                geofenceActiveBadge: "जिओफेन्स सक्रिय",
+                seniorOverviewTitle: "ज्येष्ठ नागरिक माहिती",
+                residenceAddress: "पत्ता: फ्लॅट 4B, सनफ्लॉवर रेसिडेन्सी",
+                launchVideoCallBtn: "व्हिडिओ कॉल सुरू करा",
+                activityLogTitle: "कृती व सुरक्षा इतिहास नोंद",
+                systemNormalLog: "नियमित आरोग्य देखरेख सिग्नल सामान्य आहे.",
+                justNow: "आत्ताच",
+                adminAnalyticsTitle: "अ‍ॅडमिन अ‍नालिटिक्स कन्सोल",
+                statTotalUsers: "एकूण वापरकर्ते",
+                statSeniors: "ज्येष्ठ नागरिक",
+                statCaregivers: "केअरगिव्हर",
+                statActiveAlerts: "सक्रिय इशारे",
+                weeklyChartTitle: "साप्ताहिक प्लॅटफॉर्म घटना आलेख"
+            }
+        };
+
+        // DYNAMIC MULTILINGUAL TRANSLATION FUNCTION
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            const dict = translations[lang] || translations.en;
+            
+            // Scan and update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.textContent = dict[key];
+                }
+            });
+
+            // Update role selection button label dynamically if present
+            const roleLabel = document.getElementById('selectedRoleLabel');
+            if (roleLabel) {
+                const roleKey = activeRole === 'elderly' ? 'roleSenior' : activeRole === 'caregiver' ? 'roleCaregiver' : 'roleAdmin';
+                roleLabel.textContent = dict[roleKey] || activeRole;
+            }
+        }
+
+        // PAGE NAVIGATION ENGINE
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page-view').forEach(page => {
+                page.classList.remove('active');
+            });
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            const userTag = document.getElementById('currentUserTag');
+            if (userTag) {
+                if (pageId === 'elderly') userTag.textContent = 'Elderly (Robert)';
+                else if (pageId === 'caregiver') userTag.textContent = 'Caregiver (Sarah)';
+                else if (pageId === 'admin') userTag.textContent = 'Administrator';
+                else userTag.textContent = 'Guest / Visitor';
+            }
+        }
+
+        // ACCESSIBILITY TOOLBAR HELPERS
+        function toggleLargeText() {
+            document.body.classList.toggle('large-text-mode');
+        }
+
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        function speakCurrentStatus() {
+            if ('speechSynthesis' in window) {
+                const msg = new SpeechSynthesisUtterance("AgeWell Platform active. Grandpa Robert is monitored and safe.");
+                window.speechSynthesis.speak(msg);
+            } else {
+                alert("AgeWell Status: Monitored & Safe");
+            }
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        window.onload = function() {
+            navigateTo('home');
+            initCaregiverMap();
+            initAdminChart();
+            startLiveBpmSimulation();
+            renderSyncedSchedules();
+            changeLanguage('en');
+            initScrollReveal();
+        };
+
+        // RENDER REAL-TIME SYNCHRONIZED SCHEDULES
+        function renderSyncedSchedules() {
+            const seniorList = document.getElementById('medicationList');
+            const caregiverList = document.getElementById('caregiverMedScheduleList');
+
+            if (seniorList) {
+                seniorList.innerHTML = scheduleState.map(item => `
+                    <div class="p-4 ${item.taken ? 'bg-slate-50' : 'bg-teal-50/50'} rounded-2xl border border-slate-100 flex justify-between items-center transition">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 ${item.taken ? 'bg-slate-200 text-slate-600' : 'bg-teal-600 text-white'} rounded-xl flex items-center justify-center font-bold">💊</div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
+                                <p class="text-xs text-slate-500">${item.time}</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleScheduleStatus(${item.id})" class="px-4 py-2 ${item.taken ? 'bg-slate-300 text-slate-600' : 'bg-emerald-600 text-white hover:bg-emerald-700'} rounded-xl text-xs font-bold transition">
+                            ${item.taken ? 'Completed ✓' : (translations[currentLanguage]?.takenBtn || 'Taken')}
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            if (caregiverList) {
+                caregiverList.innerHTML = scheduleState.map(item => `
+                    <div class="p-3 ${item.taken ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'} rounded-xl border flex justify-between items-center">
+                        <div>
+                            <h5 class="font-bold text-slate-800">${item.name}</h5>
+                            <p class="text-[11px] text-slate-500">${item.time}</p>
+                        </div>
+                        <span class="px-2.5 py-1 ${item.taken ? 'bg-emerald-600' : 'bg-amber-500'} text-white font-bold rounded-lg text-[10px]">
+                            ${item.taken ? 'TAKEN ✓' : 'PENDING'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function toggleScheduleStatus(id) {
+            const item = scheduleState.find(s => s.id === id);
+            if (item) {
+                item.taken = !item.taken;
+                logCaregiverEvent(`Senior Robert marked medication '${item.name}' as ${item.taken ? 'TAKEN' : 'PENDING'}.`);
+                renderSyncedSchedules();
+            }
+        }
+
+        function openAddScheduleModal() {
+            document.getElementById('addScheduleModal').classList.remove('hidden');
+        }
+
+        function closeAddScheduleModal() {
+            document.getElementById('addScheduleModal').classList.add('hidden');
+        }
+
+        function handleScheduleSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('schedTitle').value.trim();
+            const time = document.getElementById('schedTime').value.trim();
+
+            if (!title || !time) return;
+
+            const newItem = {
+                id: Date.now(),
+                name: title,
+                time: time,
+                taken: false
+            };
+
+            scheduleState.push(newItem);
+            logCaregiverEvent(`Caregiver Sarah added new routine: '${title}' scheduled for ${time}.`);
+            renderSyncedSchedules();
+            closeAddScheduleModal();
+            document.getElementById('schedTitle').value = '';
+            document.getElementById('schedTime').value = '';
+        }
+
+        // SCROLL REVEAL ANIMATION ENGINE
+        function initScrollReveal() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                    }
+                });
+            }, {
+                threshold: 0.15
+            });
+
+            document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        function selectRole(role) {
+            activeRole = role;
+            document.getElementById('selectedRoleLabel').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            document.getElementById('authNavButtons').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            navigateTo(activeRole);
+        }
+
+        function logoutUser() {
+            document.getElementById('authNavButtons').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            navigateTo('home');
+        }
+
+        function startSOSCountdown() {
+            document.getElementById('sosCountdownModal').classList.remove('hidden');
+            sosCountdown = 5;
+            document.getElementById('sosTimerCount').textContent = sosCountdown;
+            sosTimerInterval = setInterval(() => {
+                sosCountdown--;
+                document.getElementById('sosTimerCount').textContent = sosCountdown;
+                if (sosCountdown <= 0) {
+                    clearInterval(sosTimerInterval);
+                    document.getElementById('sosCountdownModal').classList.add('hidden');
+                    triggerEmergencySOS();
+                }
+            }, 1000);
+        }
+
+        function cancelSOSAlert() {
+            clearInterval(sosTimerInterval);
+            document.getElementById('sosCountdownModal').classList.add('hidden');
+        }
+
+        function triggerEmergencySOS() {
+            navigateTo('caregiver');
+            const alertBanner = document.getElementById('caregiverAlertBanner');
+            if (alertBanner) alertBanner.classList.remove('hidden');
+            logCaregiverEvent("CRITICAL SOS Triggered by Senior Robert!", true);
+        }
+
+        function acknowledgeAlert() {
+            document.getElementById('caregiverAlertBanner').classList.add('hidden');
+            logCaregiverEvent("Emergency Alert Acknowledged by Caregiver Sarah Jenkins.");
+        }
+
+        function simulateSensorAlert(type) {
+            triggerEmergencySOS();
+            document.getElementById('activeAlertTitle').textContent = `SIMULATED SENSOR: ${type}`;
+        }
+
+        function logCaregiverEvent(text, isAlert = false) {
+            const logContainer = document.getElementById('caregiverEventLog');
+            if (!logContainer) return;
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-xl flex justify-between items-center ${isAlert ? 'bg-red-50 text-red-700 font-bold border border-red-200' : 'bg-slate-50'}`;
+            div.innerHTML = `<span><strong class="${isAlert ? 'text-red-600' : 'text-emerald-600'}">[Alert]</strong> ${text}</span><span class="text-slate-400">Just now</span>`;
+            logContainer.prepend(div);
+        }
+
+        function initCaregiverMap() {
+            if (document.getElementById('caregiverMap')) {
+                mapInstance = L.map('caregiverMap').setView([18.5204, 73.8567], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(mapInstance);
+
+                L.circle([18.5204, 73.8567], {
+                    color: '#14b8a6',
+                    fillColor: '#14b8a6',
+                    fillOpacity: 0.15,
+                    radius: 300
+                }).addTo(mapInstance);
+
+                L.marker([18.5204, 73.8567]).addTo(mapInstance)
+                    .bindPopup("<b>Grandpa Robert</b><br>Sunflower Residency (Inside Safe Zone)").openPopup();
+            }
+        }
+
+        function initAdminChart() {
+            const ctx = document.getElementById('adminAnalyticsChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'System SOS & Sensor Incidents',
+                            data: [2, 1, 0, 3, 1, 0, 2],
+                            borderColor: '#0D9488',
+                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        function startLiveBpmSimulation() {
+            setInterval(() => {
+                const bpm = Math.floor(Math.random() * (76 - 70 + 1)) + 70;
+                const bpmEl = document.getElementById('liveBpmDisplay');
+                if (bpmEl) bpmEl.textContent = `${bpm} BPM`;
+                const cBpmEl = document.getElementById('caregiverBpmDisplay');
+                if (cBpmEl) cBpmEl.textContent = `${bpm} BPM`;
+            }, 3000);
+        }
+
+        // REAL CAMERA IMPLEMENTATION FOR VIDEO CALL
+        async function startVideoCall(targetName) {
+            document.getElementById('videoCallTargetName').textContent = targetName;
+            document.getElementById('videoCallModal').classList.remove('hidden');
+            try {
+                callMediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const videoEl = document.getElementById('callSelfVideo');
+                if (videoEl && callMediaStream) {
+                    videoEl.srcObject = callMediaStream;
+                    videoEl.classList.remove('hidden');
+                    document.getElementById('callSelfVideoFallback').classList.add('hidden');
+                }
+            } catch (err) {
+                console.warn('Camera permission denied or unavailable:', err);
+            }
+        }
+
+        function endVideoCall() {
+            if (callMediaStream) {
+                callMediaStream.getTracks().forEach(track => track.stop());
+                callMediaStream = null;
+            }
+            document.getElementById('callSelfVideo').classList.add('hidden');
+            document.getElementById('callSelfVideoFallback').classList.remove('hidden');
+            document.getElementById('videoCallModal').classList.add('hidden');
+        }
+
+        // REAL CAMERA IMPLEMENTATION FOR PRESCRIPTION SCANNER
+        async function openPrescriptionScannerModal() {
+            // Reset modal state
+            document.getElementById('scannedImagePreview').classList.add('hidden');
+            document.getElementById('scannerResultBox').classList.add('hidden');
+            document.getElementById('scannerAnalysisLoading').classList.add('hidden');
+            document.getElementById('prescriptionScannerModal').classList.remove('hidden');
+            
+            // Automatically open live camera stream immediately
+            await startScannerCamera();
+        }
+
+        async function startScannerCamera() {
+            try {
+                scannerMediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                const videoEl = document.getElementById('scannerCameraVideo');
+                if (videoEl && scannerMediaStream) {
+                    videoEl.srcObject = scannerMediaStream;
+                    videoEl.classList.remove('hidden');
+                    document.getElementById('scannerPlaceholderUI').classList.add('hidden');
+                    document.getElementById('captureBtn').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.warn("Camera unavailable or permission denied:", err);
+                // Fallback UI display if no camera hardware is attached
+                document.getElementById('scannerPlaceholderUI').innerHTML = `
+                    <i class="fa-solid fa-camera text-4xl text-amber-500 mb-3"></i>
+                    <h4 class="font-bold text-white text-sm">Camera Stream Permission Needed</h4>
+                    <p class="text-xs text-slate-400 mt-1">Please allow camera permissions in your browser to scan prescriptions live.</p>
+                `;
+            }
+        }
+
+        function captureScannerPhoto() {
+            const videoEl = document.getElementById('scannerCameraVideo');
+            const canvasEl = document.getElementById('scannerCaptureCanvas');
+            
+            if (!videoEl || !videoEl.videoWidth) return;
+            
+            canvasEl.width = videoEl.videoWidth || 640;
+            canvasEl.height = videoEl.videoHeight || 480;
+            canvasEl.getContext('2d').drawImage(videoEl, 0, 0);
+
+            // Stop live camera track after capture
+            if (scannerMediaStream) {
+                scannerMediaStream.getTracks().forEach(track => track.stop());
+                scannerMediaStream = null;
+            }
+
+            videoEl.classList.add('hidden');
+            document.getElementById('captureBtn').classList.add('hidden');
+            document.getElementById('scannedImagePreview').src = canvasEl.toDataURL('image/png');
+            document.getElementById('scannedImagePreview').classList.remove('hidden');
+
+            // Show AI processing spinner and load extracted medication details
+            document.getElementById('scannerAnalysisLoading').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('scannerAnalysisLoading').classList.add('hidden');
+                document.getElementById('scannerResultBox').classList.remove('hidden');
+            }, 1500);
+        }
+
+        function closePrescriptionScannerModal() {
+            if (scannerMediaStream) {
+                scannerMediaStream.getTracks().forEach(track => track.stop());
+                scannerMediaStream = null;
+            }
+            const videoEl = document.getElementById('scannerCameraVideo');
+            if (videoEl) videoEl.classList.add('hidden');
+            document.getElementById('prescriptionScannerModal').classList.add('hidden');
+        }
+
+        function addScannedMedicationToSchedule() {
+            const newItem = {
+                id: Date.now(),
+                name: 'Metformin (500mg) [AI Scanned]',
+                time: 'Twice Daily • Post Meals (01:00 PM & 08:00 PM)',
+                taken: false
+            };
+            scheduleState.push(newItem);
+            logCaregiverEvent("AI Prescription Scanner added Metformin (500mg) to routine.");
+            renderSyncedSchedules();
+            closePrescriptionScannerModal();
+        }
+
+        function toggleMedication(btn) {
+            // Replaced by toggleScheduleStatus()
+        }
+
+        // AI CHATBOT MODAL FUNCTIONS
+        function openAiChatModal() {
+            document.getElementById('aiChatModal').classList.remove('hidden');
+        }
+
+        function closeAiChatModal() {
+            document.getElementById('aiChatModal').classList.add('hidden');
+        }
+
+        function handleAiChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('aiChatInput');
+            const history = document.getElementById('aiChatHistory');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // User Message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'bg-indigo-600 text-white p-3 rounded-xl ml-auto max-w-[80%] font-medium';
+            userMsg.textContent = text;
+            history.appendChild(userMsg);
+
+            input.value = '';
+            history.scrollTop = history.scrollHeight;
+
+            // Simulated AI Response
+            setTimeout(() => {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'bg-white p-3 rounded-xl border border-slate-200 max-w-[85%] text-slate-700 font-medium shadow-sm';
+                aiMsg.innerHTML = `<span class="font-bold text-indigo-600 block mb-1">🤖 AgeWell Health Advisor:</span> I'm here to support your daily wellness, Grandpa Robert! Regarding "${text}", ensure you stay hydrated, take your prescribed doses on time, and consult Sarah if you feel any discomfort.`;
+                history.appendChild(aiMsg);
+                history.scrollTop = history.scrollHeight;
+            }, 800);
+        }
+    </script>
+</body>
+</html>
